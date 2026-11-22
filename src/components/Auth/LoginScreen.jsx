@@ -1,17 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getStoredUsers, getStoredPassword, saveCustomUser, setStoredAuthUser } from '../../constants/auth';
-import { Lock, User, KeyRound, ArrowRight, ShieldCheck, UserPlus } from 'lucide-react';
+import { dbService } from '../../services/db';
+import { DatabaseModal } from '../Database/DatabaseModal';
+import { Lock, User, KeyRound, ArrowRight, ShieldCheck, UserPlus, Database } from 'lucide-react';
 
 export const LoginScreen = ({ onLoginSuccess }) => {
-  const users = getStoredUsers();
-  const [selectedUserId, setSelectedUserId] = useState(users[0]?.id || '');
+  const [users, setUsers] = useState(() => getStoredUsers());
+  const [selectedUserId, setSelectedUserId] = useState(() => getStoredUsers()[0]?.id || '');
   const [isNewUser, setIsNewUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState('Diffusion / Booking');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [dbStatus, setDbStatus] = useState(null);
 
-  const handleLogin = (e) => {
+  const loadData = async () => {
+    const fetchedUsers = await dbService.getUsers();
+    if (fetchedUsers && fetchedUsers.length > 0) {
+      setUsers(fetchedUsers);
+      if (!selectedUserId) {
+        setSelectedUserId(fetchedUsers[0].id);
+      }
+    }
+    const status = await dbService.checkStatus();
+    setDbStatus(status);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -27,7 +47,7 @@ export const LoginScreen = ({ onLoginSuccess }) => {
         setError('Veuillez saisir votre prénom.');
         return;
       }
-      authenticatedUser = saveCustomUser(newUserName, newUserRole);
+      authenticatedUser = await dbService.saveUser({ name: newUserName.trim(), role: newUserRole });
     } else {
       authenticatedUser = users.find(u => u.id === selectedUserId) || users[0];
     }
@@ -38,6 +58,12 @@ export const LoginScreen = ({ onLoginSuccess }) => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 selection:bg-amber-500 selection:text-black overflow-hidden">
+      {/* Database configuration modal */}
+      <DatabaseModal
+        isOpen={isDbModalOpen}
+        onClose={() => setIsDbModalOpen(false)}
+        onConfigUpdated={loadData}
+      />
       {/* Background image VRACK with dark overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-75 contrast-110 transition-transform duration-1000 ease-out"
@@ -154,9 +180,19 @@ export const LoginScreen = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        <div className="pt-2 border-t border-[#2d2822] text-center text-[11px] text-[#796f60] flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Espace réservé aux membres de La Sauce en Vrac</span>
+        <div className="pt-2 border-t border-[#2d2822] flex items-center justify-between text-[11px] text-[#796f60]">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>La Sauce en Vrac</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsDbModalOpen(true)}
+            className="flex items-center gap-1 text-amber-400 hover:underline"
+          >
+            <Database className="w-3 h-3" />
+            <span>{dbStatus?.connected ? 'PostgreSQL Connecté' : 'Config BDD'}</span>
+          </button>
         </div>
       </div>
     </div>

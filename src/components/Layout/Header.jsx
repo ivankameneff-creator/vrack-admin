@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Mail, Image, History, Music, Sparkles, User, LogOut, Shield } from 'lucide-react';
+import { FileText, Mail, Image, History, Music, Sparkles, User, LogOut, Shield, Database } from 'lucide-react';
 
 export const Header = ({
   activeTab,
@@ -7,7 +7,9 @@ export const Header = ({
   savedCount = 0,
   currentUser,
   onLogout,
-  currentGroupName = 'VRACK'
+  currentGroupName = 'VRACK',
+  onOpenDbModal,
+  dbStatus
 }) => {
   const tabs = [
     { id: 'devis', label: 'Créateur de Devis', icon: FileText, badge: null },
@@ -73,8 +75,25 @@ export const Header = ({
             })}
           </nav>
 
-          {/* User Profile & Logout */}
+          {/* User Profile, Database Status & Logout */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Database status button */}
+            <button
+              onClick={onOpenDbModal}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition ${
+                dbStatus?.connected
+                  ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40 hover:bg-emerald-950/60'
+                  : 'bg-amber-950/30 text-amber-300 border-amber-500/30 hover:bg-amber-950/50'
+              }`}
+              title="Configurer la Base de Données Cloud Supabase"
+            >
+              <span className={`w-2 h-2 rounded-full ${dbStatus?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {dbStatus?.connected ? 'PostgreSQL' : 'BDD Locale'}
+              </span>
+            </button>
+
             {currentUser && (
               <div className="flex items-center gap-2 bg-[#221e1a] border border-[#383127] rounded-xl px-2.5 py-1 text-xs">
                 <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">

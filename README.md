@@ -6,7 +6,16 @@ Application web dédiée à la gestion administrative, la programmation de conce
 
 ## 🚀 Fonctionnalités Clés
 
-### 1. 🔐 Authentification & Attribution par Membre
+### 1. 🗄️ Base de Données Cloud PostgreSQL (Supabase)
+- **Synchronisation en temps réel** : Tous les devis, les groupes et les utilisateurs sont stockés dans une base **PostgreSQL** dans le cloud (Supabase) et synchronisés en direct entre tous les musiciens.
+- **Tables relationnelles** :
+  - `users` : Comptes et rôles des membres de l'association.
+  - `groups` : Catalogue des projets artistiques avec fiches complètes, effectifs, contacts et instrumentations.
+  - `devis` : Devis complets avec client, prestations, chiffrage, créateur et statut.
+- **Résilience hors-ligne (Mode Hybride)** : En cas de coupure réseau ou avant configuration des clés, l'application continue de fonctionner en local.
+- **Script SQL d'initialisation** : Fichier `supabase/schema.sql` prêt à être exécuté dans l'éditeur SQL de Supabase pour créer les tables et insérer les 7 groupes initiaux.
+
+### 2. 🔐 Authentification & Attribution par Membre
 - **Accès sécurisé par mot de passe** : Écran de connexion protégeant l'accès au portail (mot de passe association par défaut : `vrack`).
 - **Gestion des comptes & profils** : Profils intégrés pour les membres du bureau (Yann, Antoine, Ethan, Ivan, Didier) ou création de nouveaux membres.
 - **Attribution du créateur** : Tout devis créé enregistre l'identité de son créateur, visible sur le devis officiel, dans l'historique et en signature des emails.

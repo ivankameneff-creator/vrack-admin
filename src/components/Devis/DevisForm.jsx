@@ -10,9 +10,11 @@ export const DevisForm = ({
   onPrint,
   onDownloadPdf,
   onGoToMail,
-  onReset
+  onReset,
+  groups = GROUPS_LIST,
+  usersList = null
 }) => {
-  const users = getStoredUsers();
+  const users = usersList && usersList.length > 0 ? usersList : getStoredUsers();
 
   const handleGroupSelect = (group) => {
     const musicians = group.defaultMusicians || devis.event.musiciansCount || 11;
@@ -214,7 +216,7 @@ export const DevisForm = ({
               <span>Groupe représenté pour ce devis :</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {GROUPS_LIST.map((grp) => {
+              {groups.map((grp) => {
                 const isSelected = (devis.group?.id || 'vrack') === grp.id;
                 return (
                   <button

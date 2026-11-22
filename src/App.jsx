@@ -6,8 +6,11 @@ import { MailGenerator } from './components/MailProposal/MailGenerator';
 import { PhotoGallery } from './components/MediaKit/PhotoGallery';
 import { DevisList } from './components/History/DevisList';
 import { LoginScreen } from './components/Auth/LoginScreen';
+import { DatabaseModal } from './components/Database/DatabaseModal';
 import { getDefaultDevis, generateDevisNumber } from './utils/formatters';
-import { getStoredAuthUser, setStoredAuthUser } from './constants/auth';
+import { getStoredAuthUser, setStoredAuthUser, DEFAULT_USERS } from './constants/auth';
+import { GROUPS_LIST } from './constants/groups';
+import { dbService } from './services/db';
 import { printDevis, downloadPdfDirect } from './utils/pdfExport';
 import { Eye, Edit3, Printer, Download, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -17,15 +20,21 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('devis');
   
+  // Database & collections state
+  const [groupsList, setGroupsList] = useState(GROUPS_LIST);
+  const [usersList, setUsersList] = useState(DEFAULT_USERS);
+  const [savedDevisList, setSavedDevisList] = useState([]);
+  const [dbStatus, setDbStatus] = useState(null);
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+
   // Devis state
   const [devis, setDevis] = useState(() => {
     const savedDraft = localStorage.getItem('vrack_current_devis_draft');
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        // Ensure group and createdBy exist
         if (!parsed.group) {
-          parsed.group = { id: 'vrack', name: 'VRACK', baseline: 'Fanfare & Musiques Balkaniques Électrisantes' };
+          parsed.group = { id: 'vrack', name: 'VRACK', baseline: 'Musiques tziganes festives — 11 musiciens' };
         }
         return parsed;
       } catch (e) {
@@ -33,19 +42,6 @@ export default function App() {
       }
     }
     return getDefaultDevis(currentUser);
-  });
-
-  // Saved devis history list
-  const [savedDevisList, setSavedDevisList] = useState(() => {
-    const saved = localStorage.getItem('vrack_saved_devis_list');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return [];
   });
 
   // View mode in Devis tab for responsive screens ('split', 'form', 'preview')
@@ -59,15 +55,33 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Load data from database (Supabase or Local)
+  const loadDatabaseData = async () => {
+    try {
+      const [groups, users, devisData, status] = await Promise.all([
+        dbService.getGroups(),
+        dbService.getUsers(),
+        dbService.getDevisList(),
+        dbService.checkStatus()
+      ]);
+
+      if (groups && groups.length > 0) setGroupsList(groups);
+      if (users && users.length > 0) setUsersList(users);
+      if (devisData) setSavedDevisList(devisData);
+      setDbStatus(status);
+    } catch (err) {
+      console.error('Erreur chargement base de données :', err);
+    }
+  };
+
+  useEffect(() => {
+    loadDatabaseData();
+  }, []);
+
   // Auto-save draft on change
   useEffect(() => {
     localStorage.setItem('vrack_current_devis_draft', JSON.stringify(devis));
   }, [devis]);
-
-  // Save history on change
-  useEffect(() => {
-    localStorage.setItem('vrack_saved_devis_list', JSON.stringify(savedDevisList));
-  }, [savedDevisList]);
 
   // Handle Login & Logout
   const handleLoginSuccess = (user) => {
@@ -78,6 +92,7 @@ export default function App() {
         createdBy: { id: user.id, name: user.name, role: user.role }
       }));
     }
+    loadDatabaseData();
     showToast(`Bienvenue, ${user.name} !`);
   };
 
@@ -90,23 +105,22 @@ export default function App() {
   };
 
   // Actions
-  const handleSaveDevis = () => {
-    const existingIndex = savedDevisList.findIndex(d => d.id === devis.id);
+  const handleSaveDevis = async () => {
     const quoteWithCreator = {
       ...devis,
       createdBy: devis.createdBy || { name: currentUser?.name || 'Yann', role: currentUser?.role || 'Membre' },
       updatedAt: new Date().toISOString()
     };
 
-    let updatedList;
-    if (existingIndex >= 0) {
-      updatedList = [...savedDevisList];
-      updatedList[existingIndex] = quoteWithCreator;
-    } else {
-      updatedList = [{ ...quoteWithCreator, createdAt: new Date().toISOString() }, ...savedDevisList];
+    try {
+      await dbService.saveDevis(quoteWithCreator);
+      const updatedList = await dbService.getDevisList();
+      setSavedDevisList(updatedList);
+      showToast(`Devis n° ${devis.number} (${devis.group?.name || 'VRACK'}) enregistré en base !`);
+    } catch (err) {
+      console.error(err);
+      showToast('Erreur lors de la sauvegarde du devis', 'info');
     }
-    setSavedDevisList(updatedList);
-    showToast(`Devis n° ${devis.number} (${devis.group?.name || 'VRACK'}) enregistré avec succès !`);
   };
 
   const handlePrint = () => {
@@ -134,7 +148,7 @@ export default function App() {
     showToast(`Devis n° ${selectedDevis.number} (${selectedDevis.group?.name || 'VRACK'}) chargé`);
   };
 
-  const handleDuplicateDevis = (originalDevis) => {
+  const handleDuplicateDevis = async (originalDevis) => {
     const duplicated = {
       ...originalDevis,
       id: `devis-${Date.now()}`,
@@ -143,16 +157,20 @@ export default function App() {
       createdBy: { name: currentUser?.name || 'Yann', role: currentUser?.role || 'Membre' },
       status: 'Brouillon'
     };
-    setSavedDevisList([duplicated, ...savedDevisList]);
+    await dbService.saveDevis(duplicated);
+    const updated = await dbService.getDevisList();
+    setSavedDevisList(updated);
     setDevis(duplicated);
     setActiveTab('devis');
     showToast(`Devis dupliqué sous le numéro ${duplicated.number} !`);
   };
 
-  const handleDeleteDevis = (devisId) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce devis de votre historique ?')) {
-      setSavedDevisList(savedDevisList.filter(d => d.id !== devisId));
-      showToast('Devis supprimé de l\'historique');
+  const handleDeleteDevis = async (devisId) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce devis de la base de données ?')) {
+      await dbService.deleteDevis(devisId);
+      const updated = await dbService.getDevisList();
+      setSavedDevisList(updated);
+      showToast('Devis supprimé de la base');
     }
   };
 
@@ -174,9 +192,13 @@ export default function App() {
     showToast('Sauvegarde exportée avec succès !');
   };
 
-  const handleImportAll = (importedList) => {
-    setSavedDevisList(importedList);
-    showToast(`${importedList.length} devis importés avec succès !`);
+  const handleImportAll = async (importedList) => {
+    for (const d of importedList) {
+      await dbService.saveDevis(d);
+    }
+    const updated = await dbService.getDevisList();
+    setSavedDevisList(updated);
+    showToast(`${importedList.length} devis synchronisés en base de données !`);
   };
 
   // If not logged in, show Password/Account Login Gate
@@ -198,6 +220,13 @@ export default function App() {
         </div>
       )}
 
+      {/* Database Modal */}
+      <DatabaseModal
+        isOpen={isDbModalOpen}
+        onClose={() => setIsDbModalOpen(false)}
+        onConfigUpdated={loadDatabaseData}
+      />
+
       {/* Main App Header with User Profile and Group Name */}
       <Header
         activeTab={activeTab}
@@ -206,6 +235,8 @@ export default function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         currentGroupName={devis.group?.name || 'VRACK'}
+        onOpenDbModal={() => setIsDbModalOpen(true)}
+        dbStatus={dbStatus}
       />
 
       {/* Main Content Area */}
@@ -251,6 +282,8 @@ export default function App() {
                   onDownloadPdf={handleDownloadPdf}
                   onGoToMail={() => handleGoToMailWithDevis(devis)}
                   onReset={handleReset}
+                  groups={groupsList}
+                  usersList={usersList}
                 />
               </div>
 
