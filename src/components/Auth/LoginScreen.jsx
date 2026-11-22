@@ -37,14 +37,24 @@ export const LoginScreen = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#100f0e] selection:bg-amber-500 selection:text-black">
-      <div className="w-full max-w-md bg-[#181614] border border-[#332c24] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+    <div className="relative min-h-screen flex items-center justify-center p-4 selection:bg-amber-500 selection:text-black overflow-hidden">
+      {/* Background image VRACK with dark overlay */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter brightness-75 contrast-110 transition-transform duration-1000 ease-out"
+        style={{ backgroundImage: "url('/images/photo_groupe.png')" }}
+      />
+      {/* Vignette & Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-[#121110]/80 to-[#0e0d0c]/95" />
+      <div className="absolute inset-0 backdrop-blur-[2px]" />
+
+      {/* Login Card */}
+      <div className="relative z-10 w-full max-w-md bg-[#181614]/90 backdrop-blur-xl border border-[#42382c]/80 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 shadow-black/80">
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 items-center justify-center shadow-lg shadow-amber-500/20 text-black font-extrabold text-2xl font-display mb-1">
             V
           </div>
-          <h1 className="text-2xl font-bold font-display text-white">
+          <h1 className="text-2xl font-bold font-display text-white tracking-tight">
             VRACK Admin
           </h1>
           <p className="text-xs text-[#a09483]">
