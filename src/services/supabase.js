@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Récupération depuis les variables d'environnement ou le localStorage
 export const getSupabaseConfig = () => {
-  const envUrl = import.meta.env?.VITE_SUPABASE_URL;
-  const envKey = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+  const envUrl = import.meta.env?.SUPABASE_URL;
+  const envKey = import.meta.env?.SUPABASE_ANON_KEY;
   
   const localUrl = typeof window !== 'undefined' ? localStorage.getItem('vrack_supabase_url') : null;
   const localKey = typeof window !== 'undefined' ? localStorage.getItem('vrack_supabase_key') : null;
